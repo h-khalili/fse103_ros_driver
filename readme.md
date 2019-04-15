@@ -21,7 +21,7 @@ Currently the package can be installed from cloning this github repository:
 ```
 cd ~/catkin_ws/src
 mkdir variense && cd variense
-git clone https://github.com/h-khalili/fse103_ros_driver.git
+git clone https://github.com/h-khalili/fse103_ros_driver.git variense_fse103
 cd ~/catkin_ws && catkin_make
 ```
 
