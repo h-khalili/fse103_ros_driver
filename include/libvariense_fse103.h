@@ -1,10 +1,10 @@
 #include <iostream>
-#include "libusb-1.1.h"
 #include <unistd.h>
 #include <vector>
 #include <boost/endian/conversion.hpp>
 #include <bitset>
-
+#include "libusb-1.1.h"
+#include "Iir.h"
 
 namespace variense
 {
@@ -49,6 +49,38 @@ struct Fse103_message
 };
 
 
+constexpr int filter_order = 2; // 2nd order (=1 biquad)
+
+class Fse103_filter
+{  
+    // Cut-off frequency in half-cycles/sample (Wn=fc/(fs/2))
+    const float _Wn; 
+    Iir::Butterworth::LowPass<filter_order> _filter [3];
+
+    public:
+
+    Fse103_filter(const float Wn): _Wn(Wn)
+    {
+        for(int i=0; i<3; ++i) _filter[i].setup(2, Wn);
+        std::cout << "Number of stages:" << _filter[0].getNumStages() << std::endl;
+        std::cout << "A0:" << _filter[0][0].getA0() << std::endl;
+        std::cout << "A1:" << _filter[0][0].getA1() << std::endl;
+        std::cout << "A2:" << _filter[0][0].getA2() << std::endl;
+        std::cout << "B0:" << _filter[0][0].getB0() << std::endl;
+        std::cout << "B1:" << _filter[0][0].getB1() << std::endl;
+        std::cout << "B2:" << _filter[0][0].getB2() << std::endl;
+    }
+
+    // This function performs sample-by-sample filtering (of a vector of length 3)
+    const std::vector<float> operator () (const std::vector<float> raw) 
+    {
+        std::vector<float> temp(3);
+        for (int i=0; i<3; ++i) temp[i] = _filter[i].filter(raw[i]);
+        return temp;
+    }
+
+};
+
 class Fse103
 {
     libusb_context *_ctx;
@@ -60,6 +92,9 @@ class Fse103
     Fse103(const Fse103& obj){}
     Fse103& operator=(const Fse103& obj){}
 
+    // Pointer to a filter for raw force sensor values 
+    Fse103_filter * _fse103_filter_ptr;
+
     public:
     
     const static char FSE103_OUT_ENDPOINT = 0x3;
@@ -67,9 +102,12 @@ class Fse103
     const static int DATA_INTERFACE = 1;
     const static int FSE103_PACKET_SIZE = 64;
     enum data_type: uint8_t { RAW, CALCULATED };
-
+        
     
-    Fse103(std::string SN): _serial_number(SN) {}
+    Fse103(std::string SN, float Wn = 0): _serial_number(SN), _fse103_filter_ptr(nullptr)
+    {
+        if(Wn>0 && Wn<=1) _fse103_filter_ptr = new Fse103_filter(Wn);
+    }
     
     void open(const char reset = 1)    
     {
@@ -121,6 +159,7 @@ class Fse103
     ~Fse103()
     {
         std::cout << "Destructor: " << _serial_number << std::endl;
+        delete _fse103_filter_ptr;
         close();
     }
 
@@ -214,7 +253,7 @@ class Fse103
         unsigned char data [FSE103_PACKET_SIZE];
 	    int bytes_read; //used to find out how many bytes were written
         // std::cout<<"readinf Data..."<<std::endl;
-        r = libusb_bulk_transfer(_dev_handle, (0x82 | LIBUSB_ENDPOINT_IN), data, FSE103_PACKET_SIZE, &bytes_read, 1000); //my device's out endpoint was 2, found with trial- the device had 2 endpoints: 2 and 129
+        r = libusb_bulk_transfer(_dev_handle, (0x82 | LIBUSB_ENDPOINT_IN), data, FSE103_PACKET_SIZE, &bytes_read, 1000); 
         // if(r == 0 ) //we wrote the 4 bytes successfully
         //     std::cout<<"reading Successful!" << bytes_read <<std::endl;
         // else
@@ -247,6 +286,10 @@ class Fse103
         // printf("timestamp: %d(0x%08x), ", msg.timestamp, msg.timestamp);
         // printf("end: 0x%02x \n", msg.end_byte);
         std::vector<float> force = {msg.force_x, msg.force_y, msg.force_z};
+
+        if(_fse103_filter_ptr)
+            force = (*_fse103_filter_ptr)(force);
+
         return force;
     }
 

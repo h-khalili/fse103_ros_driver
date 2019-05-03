@@ -121,9 +121,9 @@ include_directories(
 )
 
 ## Declare a C++ library
-# add_library(${PROJECT_NAME}
-#   src/${PROJECT_NAME}/FSE.cpp
-# )
+add_library(iir
+   include/iir/Cascade.cpp include/iir/Butterworth.cpp include/iir/Biquad.cpp include/iir/PoleFilter.cpp 
+)
 
 ## Add cmake target dependencies of the library
 ## as an example, code may need to be generated before libraries
@@ -144,7 +144,7 @@ add_executable(fse103_node src/fse103_node.cpp)
 # add_dependencies(${PROJECT_NAME}_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 ## Specify libraries to link a library or executable target against
-target_link_libraries(fse103_node ${catkin_LIBRARIES} -lusb-1.0)
+target_link_libraries(fse103_node ${catkin_LIBRARIES} -lusb-1.0 iir)
 
 add_executable(list_sensors src/fse103_list_sensors.cpp)
 target_link_libraries(list_sensors -lusb-1.0)

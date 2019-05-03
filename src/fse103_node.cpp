@@ -13,6 +13,7 @@ void shutdown_cleanup(const ros::NodeHandle &nh)
 {
   // Remove clutter from parameter server
   nh.deleteParam("rate");
+  nh.deleteParam("filter_bandwidth");
   nh.deleteParam("serial_number");
   nh.deleteParam("sensor_id");
   ROS_INFO("Shutting down node ... ");
@@ -30,11 +31,13 @@ bool initialise(std_srvs::Trigger::Request& req,
 int main(int argc, char **argv) {
   // Default parameters
   const int default_rate = 200;
+  const float default_filter_bandwidth = 0;
   const std::string default_serial_number = "";
   const std::string default_sensor_id = "";
 
   // Node parameter variables
   int rate; // Publishing rate
+  float filter_bandwidth; 
   std::string serial_number;
   std::string sensor_id;
 
@@ -48,6 +51,7 @@ int main(int argc, char **argv) {
   ros::NodeHandle nh("~");
   // Get the ~private namespace parameters from command line or launch file
   nh.param<int>("rate", rate, default_rate);
+  nh.param<float>("filter_bandwidth", filter_bandwidth, default_filter_bandwidth);
   // If a string was not parsed, attempt to parse as int
   if (!nh.param<std::string>("serial_number", serial_number,
                              default_serial_number))
@@ -69,7 +73,8 @@ int main(int argc, char **argv) {
 
 
   // Attempt to connect to sensor now that we have all user parameters
-  variense::Fse103 force_sensor("103EAA8876");
+  // Convert filter bandwidth (cutoff) to units of half-cycles/s 
+  variense::Fse103 force_sensor("103EAA8876", 2*filter_bandwidth/rate);
   try
   {
       force_sensor.open();
@@ -93,6 +98,7 @@ int main(int argc, char **argv) {
       n.advertise<geometry_msgs::Vector3Stamped>("force_sensor_" + sensor_id, 10);
 
   ROS_INFO("The node rate is %dHz", rate);
+  ROS_INFO("The filter bandwidth is %.1fHz", filter_bandwidth);
   ROS_INFO("The serial number is %s", serial_number.c_str());
   ROS_INFO("The sensor id is %s", sensor_id.c_str());
 
