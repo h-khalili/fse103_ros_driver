@@ -62,6 +62,8 @@ int main(int argc, char **argv) {
       serial_number = std::to_string(x);
   }
 
+  std::cout << serial_number << std::endl;
+
   if (!nh.param<std::string>("sensor_id", sensor_id, default_sensor_id))
   {
     int x;
@@ -74,7 +76,8 @@ int main(int argc, char **argv) {
 
   // Attempt to connect to sensor now that we have all user parameters
   // Convert filter bandwidth (cutoff) to units of half-cycles/s 
-  variense::Fse103 force_sensor("103EAA8876", 2*filter_bandwidth/rate);
+  // variense::Fse103 force_sensor("103EAA8876", 2*filter_bandwidth/rate);
+  variense::Fse103 force_sensor(serial_number, 2*filter_bandwidth/rate);
   try
   {
       force_sensor.open();

@@ -3,10 +3,13 @@
 
 int main()
 {
+
     std::string SN = "103EAA8876";
-    variense::Fse103 force_sensor(SN);
+    // SN = "abc";
+    variense::Fse103 force_sensor(SN, 0.1);
     try
     {
+        std::cout<<"Try opening force sensor "<<std::endl;
         force_sensor.open();
     }
     catch(const std::exception& e)

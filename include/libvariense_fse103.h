@@ -9,6 +9,9 @@
 namespace variense
 {
 
+uint16_t vendor_id = 0x16d0;
+uint16_t product_id = 0x0c21;
+
 struct Fse103_message
 {
     uint8_t start_byte;
@@ -86,7 +89,7 @@ class Fse103
     libusb_context *_ctx;
     libusb_device *_dev;
     libusb_device_handle *_dev_handle;
-    const std::string _serial_number;
+    std::string _serial_number;
     
     Fse103(){}
     Fse103(const Fse103& obj){}
@@ -104,9 +107,15 @@ class Fse103
     enum data_type: uint8_t { RAW, CALCULATED };
         
     
-    Fse103(std::string SN, float Wn = 0): _serial_number(SN), _fse103_filter_ptr(nullptr)
+    Fse103(std::string SN, float Wn = 0):
+        _serial_number(SN),
+        _ctx(nullptr),
+        _dev(nullptr),
+        _dev_handle(nullptr),
+        _fse103_filter_ptr(nullptr)
     {
         if(Wn>0 && Wn<=1) _fse103_filter_ptr = new Fse103_filter(Wn);
+        std::cout<<"Constructor "<<std::endl;
     }
     
     void open(const char reset = 1)    
@@ -118,14 +127,50 @@ class Fse103
             std::cout<<"Init Error "<<r<<std::endl; //there was an error
             throw std::runtime_error("libusb could not be initialised.");
         }
+        std::cout<<"libusb initialised "<<r<<std::endl;
 
-        _dev_handle = libusb_open_device_with_serial_number(_ctx, _serial_number.c_str());
-        if (_dev_handle)
+        if(_serial_number == "")
         {
-            libusb_print_device(libusb_get_device(_dev_handle), 0, 0);            
+            std::cout<<"No serial number given"<<r<<std::endl;
+            _dev_handle = libusb_open_device_with_vid_pid(_ctx, vendor_id, product_id);
+            if(_dev_handle)
+            {
+                unsigned char serial_buffer[256];
+                r = libusb_get_device_serial_number(_dev_handle, serial_buffer, sizeof(serial_buffer));
+                if(r > 0)
+                {
+                    _serial_number = (char *) serial_buffer;
+                    std::cout<<"Serial number obtained successfully: "<<_serial_number<<std::endl;
+                }
+            }
         }
         else
-            throw std::runtime_error("Variense FSE 103 sensor could not be opened. Do you have USB access permission?");
+        {
+            std::cout<<"Serial number given:" << _serial_number <<std::endl;
+            _dev_handle = libusb_open_device_with_serial_number(_ctx, _serial_number.c_str());
+        }
+    
+        if (_dev_handle)
+        {
+            libusb_print_device(libusb_get_device(_dev_handle), 0, 0);
+            if(_dev_handle)
+            {
+                std::cout<<"dev found?: "<<std::endl;
+                unsigned char serial_buffer[256];
+                r = libusb_get_device_serial_number(_dev_handle, serial_buffer, sizeof(serial_buffer));
+                if(r > 0)
+                {
+                    _serial_number = (char *) serial_buffer;
+                    std::cout<<"Serial number obtained successfully: "<<_serial_number<<std::endl;
+                }
+            }           
+        }
+        else
+        {
+            std::string err = "Variense FSE 103 sensor (" + _serial_number + ") could not be opened. Do you have USB access permission?";
+            // throw std::runtime_error("Variense FSE 103 sensor (%s) could not be opened. Do you have USB access permission?");
+            throw std::runtime_error(err);
+        }
 
         // kernel attaches when USB is plugged in
         // This works with any available interface number (0 or 1).
@@ -141,7 +186,8 @@ class Fse103
     	r = libusb_claim_interface(_dev_handle, DATA_INTERFACE); 
         if(r < 0) {
             std::cout<<"Cannot Claim Interface"<<std::endl;
-            return;
+            std::string err = "Cannot claim interface. Is the sensor driver (" + _serial_number + ") already running?";
+            throw std::runtime_error(err);
         }
         std::cout<<"Claimed Interface"<<std::endl;
 
@@ -159,7 +205,7 @@ class Fse103
     ~Fse103()
     {
         std::cout << "Destructor: " << _serial_number << std::endl;
-        delete _fse103_filter_ptr;
+        if(_fse103_filter_ptr) delete _fse103_filter_ptr;
         close();
     }
 
@@ -205,7 +251,7 @@ class Fse103
             }
             libusb_close(_dev_handle);
         }
-        libusb_exit(_ctx);
+        if(_ctx) libusb_exit(_ctx);
     }
 
 

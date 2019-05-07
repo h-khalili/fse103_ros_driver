@@ -28,6 +28,7 @@
 #define snprintf _snprintf
 #endif
 
+ssize_t libusb_get_refcnt(libusb_device * dev);
 
 static void print_endpoint_comp(const struct libusb_ss_endpoint_companion_descriptor *ep_comp)
 {
@@ -279,10 +280,7 @@ libusb_device_handle * libusb_open_device_with_serial_number(
 	int r;
 
 	if ((cnt = libusb_get_device_list(ctx, &devs)) < 0)
-	{
-		// error occurred
-		return NULL;
-	}
+		return NULL; // No devices found
 
 	while ((dev = devs[i++]) != NULL) {
 		struct libusb_device_descriptor desc;
@@ -291,20 +289,21 @@ libusb_device_handle * libusb_open_device_with_serial_number(
 			break;
 
 		r = libusb_open(dev, &dev_handle);
-		if (r < 0)
-			break;
+		if(r < 0)
+			break; // dev_handle should still be NULL
 
-		// Something is wrong if we can't read serial number index
-		// Or is there a case for valid serial number at index 0?
+		// Something is wrong if the index is 0 (it's a special index).
 		if (desc.iSerialNumber) {
+			// Returns number of bytes
 			r = libusb_get_string_descriptor_ascii(dev_handle, desc.iSerialNumber, string, sizeof(string));
 			if (r > 0)
 				if(!strcmp((const char *)string, (const char *)serial_number))
 					break; // found
 		}
 
+		// This is not our device, so close it and move on.
 		libusb_close(dev_handle);
-
+		dev_handle = NULL; // Because it is not nulled automatically!
 	}
 
 	libusb_free_device_list(devs, 1);
@@ -389,6 +388,39 @@ error:
 out:
 	libusb_free_device_list(devs, 1);
 	return N;
+}
+
+
+// TODO: description
+ssize_t libusb_get_device_serial_number(libusb_device_handle * dev_handle, unsigned char * serial_number, int length)
+{
+	int r; // return value
+	if(dev_handle)
+	{
+		// unsigned char buffer[256];
+		struct libusb_device *dev = libusb_get_device(dev_handle);
+		struct libusb_device_descriptor desc;
+		libusb_get_device_descriptor(dev, &desc); // If handle is not null, this should work
+		if (desc.iSerialNumber) {
+			r = libusb_get_string_descriptor_ascii(dev_handle, desc.iSerialNumber, serial_number, length);
+			return r;
+		}
+		return LIBUSB_ERROR_INVALID_PARAM; // TODO: check error
+	}
+	else
+		return LIBUSB_ERROR_NO_DEVICE;
+}
+
+
+
+// TODO: description
+ssize_t libusb_get_refcnt(libusb_device * dev)
+{
+	if(!dev)
+		return -1;
+
+	ssize_t * data = (ssize_t *)dev;
+	return data[5];
 }
 
 #endif
