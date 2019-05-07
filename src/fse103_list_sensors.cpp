@@ -24,7 +24,7 @@ int main(int argc, char *argv[])
 		return r;
 	}
 
-    libusb_set_debug(ctx, 3); //set verbosity level to 3, as suggested in the documentation
+    // libusb_set_debug(ctx, 3); //set verbosity level to 3, as suggested in the documentation
 
     // Get the list of devices
 	cnt = libusb_get_device_list_with_vid_pid(ctx, &devs, vendor_id, product_id);  
