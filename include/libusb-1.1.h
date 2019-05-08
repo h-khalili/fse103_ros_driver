@@ -215,15 +215,20 @@ int libusb_print_device(libusb_device *dev, int level, int verbose)
 			desc.idVendor, desc.idProduct);
 	}
 
-	printf("%.*sDev (bus %d, device %d): %s\n", level * 2, "                    ",
+	printf("%.*sDev (bus %d, device %d): %s", level * 2, "                    ",
 		libusb_get_bus_number(dev), libusb_get_device_address(dev), description);
 
-	if (handle && verbose) {
+	if (handle) {
 		if (desc.iSerialNumber) {
 			ret = libusb_get_string_descriptor_ascii(handle, desc.iSerialNumber, string, sizeof(string));
 			if (ret > 0)
-				printf("%.*s  - Serial Number: %s\n", level * 2,
+			{
+				if(verbose)
+					printf("\n%.*s  - Serial Number: %s\n", level * 2,
 				"                    ", string);
+				else
+					printf(" [%s]\n", string);
+			}
 		}
 	}
 
@@ -271,7 +276,6 @@ libusb_device_handle * libusb_open_device_with_serial_number(
 	libusb_context *ctx, const char* serial_number )
 {
 	struct libusb_device **devs;
-	struct libusb_device *found = NULL;
 	struct libusb_device *dev;
 	struct libusb_device_handle *dev_handle = NULL;
 	unsigned char string[256];
@@ -340,16 +344,14 @@ ssize_t libusb_get_device_list_with_vid_pid(libusb_context *ctx,
 	struct libusb_device **found; // List of devices with given vid_pid
 	struct libusb_device *dev;
 	size_t i = 0;
-	size_t N = 0; // Number of devices found
-	ssize_t cnt = 0; //holding number of devices in list
+	size_t N = 0; // Number of relevant devices found
+	ssize_t cnt = 0; // Number of all devices in list
 	int r; // return value
 
 	if ((cnt = libusb_get_device_list(ctx, &devs)) < 0)
-	{
-		return -1;
-	}
-
-	// Initialise list of found devices to the same size as *devs
+		return cnt; // Return error number 
+		
+	// Initialise list of found devices to the same size as devs
 	// Last element is NULL to denote the end
 	found = (libusb_device**)malloc( (cnt+1) * sizeof(struct libusb_device *) );
 
@@ -358,11 +360,8 @@ ssize_t libusb_get_device_list_with_vid_pid(libusb_context *ctx,
 		r = libusb_get_device_descriptor(dev, &desc);
 		if (r < 0)
 			goto error;
-		if (desc.idVendor == vendor_id && desc.idProduct == product_id) {
-			// printf("found\n");
-			found[N] = libusb_ref_device(dev);
-			++N;
-		}
+		if (desc.idVendor == vendor_id && desc.idProduct == product_id)
+			found[N++] = libusb_ref_device(dev);
 	}
 
 	/* We will almost definitely have less devices found
@@ -384,14 +383,23 @@ error:
 	// The libusb_free_device_list looks for a NULL element to terminate. 
 	found[N] = NULL;
 	libusb_free_device_list(found, 1);
-	N = 0;
+	N = r; // Return error number
 out:
 	libusb_free_device_list(devs, 1);
 	return N;
 }
 
 
-// TODO: description
+
+/* Author: Hassan Hakim Khalili
+ * Retrieves the serial number of a device. You should pass a character buffer
+ * of a maximum size of 256.
+ *
+ * \param dev_handle a device handle
+ * \param serial_number output buffer for serial number string descriptor
+ * \param length size of data buffer
+ * \returns number of bytes returned in data, or LIBUSB_ERROR code on failure
+ */
 ssize_t libusb_get_device_serial_number(libusb_device_handle * dev_handle, unsigned char * serial_number, int length)
 {
 	int r; // return value
@@ -411,13 +419,16 @@ ssize_t libusb_get_device_serial_number(libusb_device_handle * dev_handle, unsig
 		return LIBUSB_ERROR_NO_DEVICE;
 }
 
-
-
-// TODO: description
+/* Author: Hassan Hakim Khalili
+ * Retrieves the number of references to a device.
+ *
+ * \param dev a device 
+ * \returns number of device references
+ */
 ssize_t libusb_get_refcnt(libusb_device * dev)
 {
 	if(!dev)
-		return -1;
+		return LIBUSB_ERROR_NO_DEVICE;
 
 	ssize_t * data = (ssize_t *)dev;
 	return data[5];

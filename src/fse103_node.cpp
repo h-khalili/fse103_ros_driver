@@ -7,6 +7,8 @@
 #include "libusb-1.1.h"
 #include "libvariense_fse103.h"
 
+
+
 variense::Fse103 *force_sensor_ptr = nullptr;
 
 void shutdown_cleanup(const ros::NodeHandle &nh)
@@ -22,10 +24,19 @@ void shutdown_cleanup(const ros::NodeHandle &nh)
 bool initialise(std_srvs::Trigger::Request& req, 
                 std_srvs::Trigger::Response& res)
 {
-  int r = force_sensor_ptr->initialise();
-  res.success = !r;
-  res.message = "Sensor successfully initialised.";
-  return !r; //1: success, 0: fail
+  int r;
+  try
+  {
+    force_sensor_ptr->initialise();
+    res.success = 1;
+    res.message = "Sensor successfully initialised.";
+  }
+  catch(const std::exception& e)
+  {
+    res.success = 1;
+    res.message = e.what() + '\n';
+  }
+  return r;
 }
 
 int main(int argc, char **argv) {
@@ -90,7 +101,7 @@ int main(int argc, char **argv) {
   }
 
   // Set sensor to transfer calculated value measurements
-  force_sensor.set_data_type(variense::Fse103::CALCULATED);
+  force_sensor.set_data_format(variense::Fse103::CALCULATED);
 
   // Initialise the sensor pointer for the "initialise" service
   force_sensor_ptr = &force_sensor;
@@ -102,7 +113,7 @@ int main(int argc, char **argv) {
 
   ROS_INFO("The node rate is %dHz", rate);
   ROS_INFO("The filter bandwidth is %.1fHz", filter_bandwidth);
-  ROS_INFO("The serial number is %s", serial_number.c_str());
+  ROS_INFO("The serial number is %s", force_sensor.get_serial_number().c_str());
   ROS_INFO("The sensor id is %s", sensor_id.c_str());
 
   ros::Rate loop_rate(rate);
