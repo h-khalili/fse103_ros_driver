@@ -1,4 +1,8 @@
-#include "libvariense_fse103.h"
+#include "../include/variense_fse103/libvariense_fse103.h"
+#include "../include/variense_fse103/iir/Cascade.cpp"
+#include "../include/variense_fse103/iir/Butterworth.cpp"
+#include "../include/variense_fse103/iir/Biquad.cpp"
+#include "../include/variense_fse103/iir/PoleFilter.cpp"
 
 
 int main()
@@ -6,7 +10,7 @@ int main()
 
     std::string SN = "103EAA8876";
     SN = "";
-    variense::Fse103 force_sensor(SN, 0.1);
+    variense::Fse103 force_sensor(SN);
     try
     {
         std::cout<<"Try opening force sensor "<<std::endl;

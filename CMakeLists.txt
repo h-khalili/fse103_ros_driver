@@ -116,13 +116,16 @@ catkin_package(
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
 include_directories(
-  include
+  include/${PROJECT_NAME}
   ${catkin_INCLUDE_DIRS}
 )
 
 ## Declare a C++ library
 add_library(iir
-   include/iir/Cascade.cpp include/iir/Butterworth.cpp include/iir/Biquad.cpp include/iir/PoleFilter.cpp 
+  include/${PROJECT_NAME}/iir/Cascade.cpp
+  include/${PROJECT_NAME}/iir/Butterworth.cpp
+  include/${PROJECT_NAME}/iir/Biquad.cpp
+  include/${PROJECT_NAME}/iir/PoleFilter.cpp 
 )
 
 ## Add cmake target dependencies of the library
