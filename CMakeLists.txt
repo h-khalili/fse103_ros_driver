@@ -125,7 +125,7 @@ add_library(iir
   include/${PROJECT_NAME}/iir/Cascade.cpp
   include/${PROJECT_NAME}/iir/Butterworth.cpp
   include/${PROJECT_NAME}/iir/Biquad.cpp
-  include/${PROJECT_NAME}./iir/PoleFilter.cpp 
+  include/${PROJECT_NAME}/iir/PoleFilter.cpp 
 )
 
 ## Add cmake target dependencies of the library
