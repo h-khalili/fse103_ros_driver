@@ -16,8 +16,8 @@
  * The code should be compatible with C/C++.
  */
 
-#ifndef LIBUSB1_1
-#define LIBUSB1_1
+#ifndef LIBUSB1_1_H
+#define LIBUSB1_1_H
 
 #include <stdio.h>
 #include <string.h>
@@ -434,4 +434,4 @@ ssize_t libusb_get_refcnt(libusb_device * dev)
 	return data[5];
 }
 
-#endif
+#endif // #define LIBUSB1_1_H

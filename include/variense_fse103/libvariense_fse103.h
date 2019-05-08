@@ -6,8 +6,8 @@
 #include "libusb-1.1.h"
 #include "Iir.h"
 
-#ifndef VARIENSE_FSE103
-#define VARIENSE_FSE103
+#ifndef VARIENSE_FSE103_H
+#define VARIENSE_FSE103_H
 
 namespace variense
 {
@@ -369,6 +369,6 @@ class Fse103
 };
 
 
-} // end namespace
+} // namespace variense
 
-#endif // ifndef VARIENSE_FSE103
+#endif // #define VARIENSE_FSE103_H

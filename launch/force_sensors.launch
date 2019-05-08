@@ -1,0 +1,16 @@
+<launch>
+  <node name="force_sensor_0" pkg="variense_fse103" type="fse103_node" output="screen">
+  	<param name="sensor_id" value="0" />
+  	<param name="serial_number" value="" />
+  	<param name="rate" value="200" />
+	<param name="filter_bandwidth" value="6" />
+	<param name="init_on_start" value="true" />
+  </node>
+  <node name="force_sensor_1" pkg="variense_fse103" type="fse103_node" output="screen">
+  	<param name="sensor_id" value="1" />
+  	<param name="serial_number" value="103EAA8876" />
+  	<param name="rate" value="200" />
+	<param name="filter_bandwidth" value="10" />
+	<param name="init_on_start" value="false" />
+  </node>
+</launch>

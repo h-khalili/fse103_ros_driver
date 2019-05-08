@@ -37,26 +37,34 @@ class Fse103Node
   // Node handle with the node's private namespace (used with parameter server)
   ros::NodeHandle nh_priv_;
 
+  // ROS service for initialising the sensor. This resets the sensor offset
   ros::ServiceServer initialise_service;
 
+  // Publisher for force sensor measurements
   ros::Publisher force_pub;
 
+  // Measurement publishing frequency
   ros::Rate loop_rate;
 
+  // Publishing message object
   geometry_msgs::Vector3Stamped msg;
 
   public:
 
-  Fse103Node (): loop_rate(default_rate)
+  Fse103Node (): loop_rate(1) // ros::Rate has to be initialised
   {
     nh_priv_ = ros::NodeHandle("~");
-    std::cout << "Init params: " << std::endl;
     initialiseParameters();
-    std::cout << "connect sensor: " << std::endl;
-    connectSensor();
-    std::cout << "Init publish: " << std::endl;
+    try
+    {
+      connectSensor();
+    } 
+    catch(const std::exception& e)
+    {
+      ROS_FATAL("%s", e.what());
+      throw;
+    }
     initialisePublisher();
-    std::cout << "Init service: " << std::endl;
     initialiseServices();
 
     ROS_INFO("The node rate is %dHz", rate);
@@ -65,7 +73,10 @@ class Fse103Node
     else
       ROS_INFO("No low pass filter set.");
     ROS_INFO("The serial number is %s", fse103_ptr_->get_serial_number().c_str());
-    ROS_INFO("The sensor id is %s", sensor_id.c_str());
+    if (sensor_id != "")
+      ROS_INFO("The sensor id is %s", sensor_id.c_str());
+    if (init_on_start)
+      ROS_INFO("Force sensor initalised.");
 
     loop_rate = ros::Rate(rate);
 
@@ -76,6 +87,7 @@ class Fse103Node
     // Remove clutter from parameter server
     nh_priv_.deleteParam("rate");
     nh_priv_.deleteParam("filter_bandwidth");
+    nh_priv_.deleteParam("init_on_start");
     nh_priv_.deleteParam("serial_number");
     nh_priv_.deleteParam("sensor_id");
     ROS_INFO("Shutting down node ... ");
@@ -84,7 +96,15 @@ class Fse103Node
   void spinOnce()
   {
     // Publish force measurement
-    const std::vector<float> force = fse103_ptr_->read_force();
+    std::vector<float> force;
+    try{
+      force = fse103_ptr_->read_force();
+    }
+    catch(const std::exception& e)
+    {
+      ROS_FATAL("%s", e.what());
+      throw;
+    }
     msg.header.stamp = ros::Time::now();
     msg.vector.x = force[0];
     msg.vector.y = force[1];
@@ -114,8 +134,6 @@ class Fse103Node
         serial_number = std::to_string(x);
     }
 
-    std::cout << serial_number << std::endl;
-
     if (!nh_priv_.param<std::string>("sensor_id", sensor_id, default_sensor_id))
     {
       int x;
@@ -132,11 +150,10 @@ class Fse103Node
     // Convert filter bandwidth (cutoff) to units of half-cycles/s 
     // variense::Fse103 force_sensor("103EAA8876", 2*filter_bandwidth/rate);
     fse103_ptr_.reset(new variense::Fse103(serial_number, 2*filter_bandwidth/rate));
-    // No need for try/catch block. Let program quit upon an error.
+
     fse103_ptr_->open();
     if(init_on_start) fse103_ptr_->initialise();
       
-
     // Set sensor to transfer calculated value measurements
     fse103_ptr_->set_data_format(variense::Fse103::CALCULATED);
   }
@@ -178,14 +195,22 @@ int main(int argc, char **argv) {
   // read commnad line arguements and node name
   ros::init(argc, argv, "force_sensor_node");
 
-  Fse103Node fse103_node;
-
-  int count = 0;
-  ROS_INFO("Publishing force sensor measurements ... ");
-  while (ros::ok()) 
+  try
   {
-    fse103_node.spinOnce();
-    ++count;
+    Fse103Node fse103_node;
+    
+    int count = 0;
+    ROS_INFO("Publishing force sensor measurements ... ");
+    while (ros::ok()) 
+    {
+      fse103_node.spinOnce();
+      ++count;
+    }
+    ROS_INFO("Shute ... ");
+  }
+  catch(const std::exception& e)
+  {
+    std::cerr << "Exception caught!" << std::endl;
   }
 
   return 0;
