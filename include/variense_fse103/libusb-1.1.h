@@ -213,6 +213,7 @@ int libusb_print_device(libusb_device *dev, int level, int verbose)
 	else {
 		snprintf(description, sizeof(description), "%04X - %04X",
 			desc.idVendor, desc.idProduct);
+		puts("\n");
 	}
 
 	printf("%.*sDev (bus %d, device %d): %s", level * 2, "                    ",
