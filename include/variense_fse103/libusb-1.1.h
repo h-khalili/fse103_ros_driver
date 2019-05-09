@@ -389,8 +389,6 @@ out:
 	return N;
 }
 
-
-
 /* Author: Hassan Hakim Khalili
  * Retrieves the serial number of a device. You should pass a character buffer
  * of a maximum size of 256.

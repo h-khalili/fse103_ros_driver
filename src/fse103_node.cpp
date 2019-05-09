@@ -42,6 +42,7 @@ class Fse103Node
 
   // Publisher for force sensor measurements
   ros::Publisher force_pub;
+  std::string pub_topic_name;
 
   // Measurement publishing frequency
   ros::Rate loop_rate;
@@ -67,30 +68,9 @@ class Fse103Node
     initialisePublisher();
     initialiseServices();
 
-    ROS_INFO("The node rate is %dHz", rate);
-    if (filter_bandwidth > 0)
-      ROS_INFO("The filter bandwidth is %.1fHz", filter_bandwidth);
-    else
-      ROS_INFO("No low pass filter set.");
-    ROS_INFO("The serial number is %s", fse103_ptr_->get_serial_number().c_str());
-    if (sensor_id != "")
-      ROS_INFO("The sensor id is %s", sensor_id.c_str());
-    if (init_on_start)
-      ROS_INFO("Force sensor initalised.");
+    ROS_INFO("%s", info_string().c_str());
 
     loop_rate = ros::Rate(rate);
-
-  }
-
-  ~Fse103Node()
-  {
-    // Remove clutter from parameter server
-    nh_priv_.deleteParam("rate");
-    nh_priv_.deleteParam("filter_bandwidth");
-    nh_priv_.deleteParam("init_on_start");
-    nh_priv_.deleteParam("serial_number");
-    nh_priv_.deleteParam("sensor_id");
-    ROS_INFO("Shutting down node ... ");
   }
 
   void spinOnce()
@@ -141,17 +121,23 @@ class Fse103Node
         // Cast number to string
         sensor_id = std::to_string(x);
     }
-    // nh_priv_.param<std::string>("sensor_id", sensor_id , default_sensor_id);
+    
+    // Remove clutter from parameter server
+    nh_priv_.deleteParam("rate");
+    nh_priv_.deleteParam("filter_bandwidth");
+    nh_priv_.deleteParam("init_on_start");
+    nh_priv_.deleteParam("serial_number");
+    nh_priv_.deleteParam("sensor_id");
   }
 
   void connectSensor()
   {
     // Attempt to connect to sensor now that we have all user parameters
     // Convert filter bandwidth (cutoff) to units of half-cycles/s 
-    // variense::Fse103 force_sensor("103EAA8876", 2*filter_bandwidth/rate);
     fse103_ptr_.reset(new variense::Fse103(serial_number, 2*filter_bandwidth/rate));
 
     fse103_ptr_->open();
+    serial_number = fse103_ptr_->get_serial_number();
     if(init_on_start) fse103_ptr_->initialise();
       
     // Set sensor to transfer calculated value measurements
@@ -160,9 +146,9 @@ class Fse103Node
 
   void initialisePublisher()
   {
-    const std::string topic_name = pub_topic_prefix_ + (sensor_id != "" ? "_" : "") + sensor_id;  
+    pub_topic_name = pub_topic_prefix_ + (sensor_id != "" ? "_" : "") + sensor_id;  
     force_pub =
-      nh_.advertise<geometry_msgs::Vector3Stamped>(topic_name, 10);
+      nh_.advertise<geometry_msgs::Vector3Stamped>(pub_topic_name, 10);
   }
 
   void initialiseServices()
@@ -182,10 +168,29 @@ class Fse103Node
     }
     catch(const std::exception& e)
     {
-      res.success = 1;
+      res.success = 0;
       res.message = e.what() + '\n';
     }
     return r;
+  }
+
+  std::string info_string ()
+  {
+    std::ostringstream o;
+    o << "Variense FSE103 force sensor driver::" << std::endl
+      << "- Serial number: " << serial_number << std::endl
+      << "- Publishing rate: " << rate << "Hz" << std::endl
+      << "- Filter bandwidth: ";
+    if(filter_bandwidth > 0)
+      o << filter_bandwidth << "Hz";
+    else 
+      o << "N/A";
+    o << std::endl
+      << "- Initialisation: " << (init_on_start? "true" : "false") << std::endl
+      << "- ROS topic: " << pub_topic_name << std::endl
+      << "- Node name: " << ros::this_node::getName();
+
+    return o.str();
   }
 
 }; // class Fse103Node
@@ -200,13 +205,12 @@ int main(int argc, char **argv) {
     Fse103Node fse103_node;
     
     int count = 0;
-    ROS_INFO("Publishing force sensor measurements ... ");
+    // ROS_INFO("Publishing force sensor measurements ... ");
     while (ros::ok()) 
     {
       fse103_node.spinOnce();
       ++count;
     }
-    ROS_INFO("Shute ... ");
   }
   catch(const std::exception& e)
   {
