@@ -159,7 +159,6 @@ class Fse103Node
   bool initialise(std_srvs::Trigger::Request& req, 
                   std_srvs::Trigger::Response& res)
   {
-    int r;
     try
     {
       fse103_ptr_->initialise();
@@ -171,7 +170,7 @@ class Fse103Node
       res.success = 0;
       res.message = e.what() + '\n';
     }
-    return r;
+    return res.success;
   }
 
   std::string info_string ()
