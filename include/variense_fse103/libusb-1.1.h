@@ -295,7 +295,8 @@ libusb_device_handle * libusb_open_device_with_serial_number(
 
 		r = libusb_open(dev, &dev_handle);
 		if(r < 0)
-			break; // dev_handle should still be NULL
+			// Keep looking as other devices may open (from udev access permissions)
+			continue; // dev_handle should still be NULL
 
 		// Something is wrong if the index is 0 (it's a special index).
 		if (desc.iSerialNumber) {
