@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <package format="2">
-  <name>fse103_ros_driver</name>
+  <name>variense_fse103</name>
   <version>1.0.0</version>
   <description>Variense FSE103 ROS Driver</description>
   <maintainer email="hassan.hakimkhalili@manchester.ac.uk">Hassan Hakim Khalili</maintainer>
